@@ -17,8 +17,8 @@ admin.initializeApp({
   databaseURL: 'https://prime-rush-esports-default-rtdb.firebaseio.com'
 });
 
-const db     = admin.firestore();                              // পুরনো Firestore endpoints এর জন্য
-const rtdb   = admin.database();                               // নতুন Realtime DB (token cleanup এর জন্য)
+const db     = admin.firestore();
+const rtdb   = admin.database();
 
 // ════════════════════════════════════════════════════════════
 // HELPERS
@@ -140,8 +140,7 @@ app.get('/tokens', async (req, res) => {
 });
 
 // ════════════════════════════════════════════════════════════
-// 🔔 NEW: PUSH NOTIFICATION ENDPOINT (prime-rush-esports)
-// Client থেকে tokens array আসে — DB lookup লাগে না
+// 🔔 PUSH NOTIFICATION ENDPOINT (with detailed error logging)
 // ════════════════════════════════════════════════════════════
 
 app.post('/send-push', async (req, res) => {
@@ -155,7 +154,7 @@ app.post('/send-push', async (req, res) => {
       return res.status(400).json({ success: false, error: 'title and body required' });
     }
 
-    // ── Sanitize data for FCM (all values must be strings) ──
+    // ── Sanitize data for FCM ──
     const dataStrings = {};
     if (data && typeof data === 'object') {
       Object.entries(data).forEach(([k, v]) => {
@@ -190,12 +189,12 @@ app.post('/send-push', async (req, res) => {
         },
         webpush: {
           notification: {
-            title:                title,
-            body:                 body,
-            icon:                 'https://i.postimg.cc/QNFM0Fcv/file-00000000e14481f59c423448bd73da63.png',
-            badge:                'https://i.postimg.cc/QNFM0Fcv/file-00000000e14481f59c423448bd73da63.png',
+            title:              title,
+            body:               body,
+            icon:               'https://i.postimg.cc/QNFM0Fcv/file-00000000e14481f59c423448bd73da63.png',
+            badge:              'https://i.postimg.cc/QNFM0Fcv/file-00000000e14481f59c423448bd73da63.png',
             ...(imageUrl ? { image: imageUrl } : {}),
-            requireInteraction:   type === 'room_details'
+            requireInteraction: type === 'room_details'
           },
           fcmOptions: {
             link: (data && data.url) ? String(data.url) : '/'
@@ -207,18 +206,29 @@ app.post('/send-push', async (req, res) => {
       successCount += resp.successCount;
       failureCount += resp.failureCount;
 
+      // ════════════════════════════════════════════════
+      // 🔍 DETAILED ERROR LOGGING (NEW)
+      // ════════════════════════════════════════════════
       resp.responses.forEach((r, i) => {
         if (!r.success) {
           const code = (r.error && r.error.code) || '';
+          const msg  = (r.error && r.error.message) || '';
+          console.warn(`[send-push] ❌ FAILED token[${i}]:`);
+          console.warn(`  code: ${code}`);
+          console.warn(`  msg: ${msg}`);
+          console.warn(`  token-preview: ${String(chunk[i]).substring(0, 40)}...`);
           if (code.includes('registration-token-not-registered') ||
               code.includes('invalid-registration-token')) {
             invalidTokens.push(chunk[i]);
           }
+        } else {
+          console.log(`[send-push] ✅ token[${i}] sent OK`);
         }
       });
+      // ════════════════════════════════════════════════
     }
 
-    // ── Auto-cleanup dead tokens from Realtime DB ──
+    // ── Auto-cleanup dead tokens ──
     if (invalidTokens.length > 0) {
       try {
         const snap = await rtdb.ref('fcm_tokens').once('value');
@@ -239,7 +249,7 @@ app.post('/send-push', async (req, res) => {
       }
     }
 
-    console.log(`[send-push] sent=${successCount} failed=${failureCount} invalid=${invalidTokens.length}`);
+    console.log(`[send-push] SUMMARY: sent=${successCount} failed=${failureCount} invalid=${invalidTokens.length}`);
 
     res.json({
       success:       true,
@@ -256,7 +266,7 @@ app.post('/send-push', async (req, res) => {
 });
 
 // ════════════════════════════════════════════════════════════
-// EXISTING ENDPOINTS (test app এর জন্য — রেখে দিলাম)
+// EXISTING ENDPOINTS (test app এর জন্য)
 // ════════════════════════════════════════════════════════════
 
 app.post('/send-notification', async (req, res) => {
