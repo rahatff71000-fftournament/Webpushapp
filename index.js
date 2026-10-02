@@ -191,8 +191,8 @@ app.post('/send-push', async (req, res) => {
           notification: {
             title:              title,
             body:               body,
-            icon:               'https://i.postimg.cc/QNFM0Fcv/file-00000000e14481f59c423448bd73da63.png',
-            badge:              'https://i.postimg.cc/QNFM0Fcv/file-00000000e14481f59c423448bd73da63.png',
+            icon:               'https://i.postimg.cc/G2cXFJnz/file-000000001f088211b1f5a9acc5112f2f.png',
+            badge:              'https://i.postimg.cc/G2cXFJnz/file-000000001f088211b1f5a9acc5112f2f.png',
             ...(imageUrl ? { image: imageUrl } : {}),
             requireInteraction: type === 'room_details'
           },
@@ -206,9 +206,6 @@ app.post('/send-push', async (req, res) => {
       successCount += resp.successCount;
       failureCount += resp.failureCount;
 
-      // ════════════════════════════════════════════════
-      // 🔍 DETAILED ERROR LOGGING (NEW)
-      // ════════════════════════════════════════════════
       resp.responses.forEach((r, i) => {
         if (!r.success) {
           const code = (r.error && r.error.code) || '';
@@ -225,7 +222,6 @@ app.post('/send-push', async (req, res) => {
           console.log(`[send-push] ✅ token[${i}] sent OK`);
         }
       });
-      // ════════════════════════════════════════════════
     }
 
     // ── Auto-cleanup dead tokens ──
